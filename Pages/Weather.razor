@@ -1,0 +1,140 @@
+@page "/weather"
+@using Models;
+@using Logic;
+@using Data;
+
+<style>
+    table thead tr {
+        background: gray;
+    }
+
+    table thead tr {
+        font-weight: bold;
+    }
+
+    table tbody tr:nth-child(odd) {
+        background: white;
+    }
+
+    table tbody tr:nth-child(even) {
+        background: lightgray;
+    }
+
+    .weather-table {
+        margin-top: 1em;
+    }
+
+    .weather-table tbody td:nth-child(1) {
+        width: 215px;
+    }
+
+    .weather-table tbody td:nth-child(2) {
+        width: 150px;
+    }
+
+    .weather-table tbody td:nth-child(3) {
+        width: 125px;
+    }
+</style>
+
+<h1>Weather!</h1>
+<p>This component demonstrates fetching data from a server and client side sorting.</p>
+
+<input placeholder="Enter your city name" @bind="@CityName" @onkeyup="@CityKeyUp" autofocus />
+<button @onclick="GetWeatherDataAsync">Refresh ↻</button>
+
+@if (IsLoading) {
+    <span>Loading...</span>
+}
+
+@if (WeatherModels != null) 
+{    
+    <table class="weather-table">
+        <thead>
+            <tr>
+                <td class="sort-link" @onclick="@(e => SortTable(WeatherTableColumns.Date))">
+                    <span>Date</span>
+                    <span>@(_tableSorter.GetIcon(WeatherTableColumns.Date.ToString()))</span>
+                </td>
+                <td class="sort-link" @onclick="@(e => SortTable(WeatherTableColumns.Description))">
+                    <span>Description</span>
+                    <span>@(_tableSorter.GetIcon(WeatherTableColumns.Description.ToString()))</span>
+                </td>
+                <td class="sort-link" @onclick="@(e => SortTable(WeatherTableColumns.Temparature))">
+                    <span>Temparature</span>
+                    <span>@(_tableSorter.GetIcon(WeatherTableColumns.Temparature.ToString()))</span>
+                </td>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in WeatherModels)
+            {
+                <tr>
+                    <td>
+                        @item.DisplayDate
+                    </td>
+                    <td>
+                        @item.Description
+                    </td>
+                    <td>
+                        @item.DisplayTemparature
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+} else if (WeatherModels == null && !IsLoading) {
+    <div>No results</div>
+}
+
+@code 
+{    
+    private bool IsLoading { get; set; } = false;
+    private string CityName { get; set; } = "Brisbane";    
+    private List<WeatherModel> WeatherModels { get; set; }
+
+    private TableSorter<WeatherModel> _tableSorter; 
+
+    private enum WeatherTableColumns
+    {
+        Date,
+        Description,
+        Temparature
+    }
+
+    protected override async Task OnInitializedAsync()
+    { 
+        await GetWeatherDataAsync();        
+    }
+
+    private async Task GetWeatherDataAsync()    
+    {
+        IsLoading = true;
+
+        if (string.IsNullOrWhiteSpace(CityName)) 
+        {
+            WeatherModels = null;
+        } 
+        else 
+        {
+            var weatherGetter = new WeatherGetter(CityName, WeatherGetterData.GetWeatherData);         
+            WeatherModels = await weatherGetter.GetAsync();
+            _tableSorter = new TableSorter<WeatherModel>(WeatherModels);
+        }
+
+        IsLoading = false;
+    }
+
+    private void SortTable(WeatherTableColumns column)
+    {
+        WeatherModels = _tableSorter.Sort(column.ToString());
+    }    
+
+    private async Task CityKeyUp(UIKeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !IsLoading)
+        {     
+            await GetWeatherDataAsync();     
+        }
+    }
+}
